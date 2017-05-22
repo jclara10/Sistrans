@@ -12,5 +12,6 @@
 		</attributes>
 	</classpathentry>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
+	<classpathentry kind="lib" path="/java-server-jms/WebContent/WEB-INF/lib/geronimo-jms_1.1_spec-1.1.1.jar"/>
 	<classpathentry kind="output" path="build/classes"/>
 </classpath>

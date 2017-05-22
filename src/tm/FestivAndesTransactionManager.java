@@ -13,6 +13,7 @@ import dao.DAOEntradas;
 import dao.DAOEscenarios;
 import dao.DAOEspectaculos;
 import dao.DAOFunciones;
+import dtm.RegistrarAbonamientoJMS;
 import vos.Abono;
 import vos.Cliente;
 import vos.CompaniaDeTeatro;
@@ -23,8 +24,8 @@ import vos.Funcion;
 import vos.ListaEntradas;
 
 public class FestivAndesTransactionManager {
-	
-	private static final String CONNECTION_DATA_FILE_NAME_REMOTE = "/conexion.properties";
+
+	public static final String CONNECTION_DATA_FILE_NAME_REMOTE = "/conexion.properties";
 
 	private static String connectionDataPath;
 
@@ -37,6 +38,14 @@ public class FestivAndesTransactionManager {
 	private String driver;
 
 	private Connection conn;
+
+
+	private String myQueue;
+
+
+	private int numberApps;
+
+	private String topicAllAlgo;
 
 	public FestivAndesTransactionManager(String contextPathP) 
 	{
@@ -74,7 +83,7 @@ public class FestivAndesTransactionManager {
 	////////////////////////////////////////
 	///////Transacciones////////////////////
 	////////////////////////////////////////
-	
+
 	public void addCliente(Cliente cliente) throws Exception
 	{
 		DAOClientes daoClientes = new DAOClientes();
@@ -115,7 +124,7 @@ public class FestivAndesTransactionManager {
 			}
 		}
 	}
-	
+
 	public void updateCliente(Cliente cliente) throws Exception 
 	{
 		DAOClientes daoClientes = new DAOClientes();
@@ -155,7 +164,7 @@ public class FestivAndesTransactionManager {
 			}
 		}
 	}
-	
+
 	public void addCompaniaDeTeatro(CompaniaDeTeatro compania) throws Exception
 	{
 		DAOCompaniasDeTeatro daoCompaniasDeTeatro = new DAOCompaniasDeTeatro();
@@ -320,7 +329,7 @@ public class FestivAndesTransactionManager {
 			}
 		}
 	}
-	
+
 	public void addFuncion(Funcion funcion) throws Exception  
 	{
 		DAOFunciones daoFunciones = new DAOFunciones();
@@ -523,7 +532,7 @@ public class FestivAndesTransactionManager {
 			}
 		}
 	}
-	
+
 	public void devolverEntrada(int id) throws Exception
 	{
 		DAOEntradas dao = new DAOEntradas();
@@ -565,7 +574,7 @@ public class FestivAndesTransactionManager {
 			}
 		}
 	}
-	
+
 	public void devolverAbono(int idCliente, int idAbono) throws Exception
 	{
 		DAOEntradas dao = new DAOEntradas();
@@ -619,7 +628,7 @@ public class FestivAndesTransactionManager {
 			dao.setConn(conn);
 			System.out.println("Listo");
 			dao.abonar(abono.getIdCliente());
-			
+
 			daoEnt.registrarAbono(abono);
 			conn.commit();
 		}
@@ -653,139 +662,172 @@ public class FestivAndesTransactionManager {
 			}
 		}
 	}
+	public void abonarClienteRemoto(Abono abono) throws Exception 
+	{
+		DAOClientes daoClientes = new DAOClientes();
+		DAOFunciones daoFunciones = new DAOFunciones();
+		try 
+		{	
+			Connection conn = darConexion();
+			daoClientes.setConn(conn);
+			daoFunciones.setConn(conn);
+			daoClientes.abonar(abono.getIdCliente());
 
-	public int darAsistencias(int id) throws Exception
-	{
-		DAOFunciones dao = new DAOFunciones();
-		int asistencias = -1;
-		try
-		{
-			this.conn = darConexion();
-			conn.setAutoCommit(false);
-			dao.setConn(conn);
-			asistencias = dao.darAsistenciaCliente(id);
-			conn.commit();
+			RegistrarAbonamientoJMS instancia = RegistrarAbonamientoJMS.darInstacia(this);
+			instancia.setUpJMSManager(this.numberApps, this.myQueue, this.topicAllAlgo);
+			instancia.doReq(abono);  
 		}
-		catch (SQLException e) 
-		{
-			System.err.println("SQLException:" + e.getMessage());
-			e.printStackTrace();
-			conn.rollback();
-			throw e;
-		} 
-		catch (Exception e) 
-		{
-			System.err.println("GeneralException:" + e.getMessage());
-			e.printStackTrace();
-			conn.rollback();
-			throw e;
-		}
-		finally 
-		{
-			try 
+			catch (Exception e) 
 			{
-				dao.cerrarRecursos();
-				if(this.conn!=null)
-					this.conn.close();
-			}
-			catch (SQLException exception) 
+				e.printStackTrace();
+				throw e;
+			} finally 
 			{
-				System.err.println("SQLException closing resources:" + exception.getMessage());
-				exception.printStackTrace();
-				throw exception;
+				try 
+				{
+					daoClientes.cerrarRecursos();
+					if(this.conn!=null)
+						this.conn.close();
+				} catch (SQLException exception) {
+					System.err.println("SQLException closing resources:" + exception.getMessage());
+					exception.printStackTrace();
+					throw exception;
+				}
 			}
 		}
-		
-		return asistencias;
-	}
-	public int darNoAsistencias(int id) throws Exception
-	{
-		DAOFunciones dao = new DAOFunciones();
-		int asistencias = -1;
-		try
-		{
-			this.conn = darConexion();
-			conn.setAutoCommit(false);
-			dao.setConn(conn);
-			asistencias = dao.darNoAsistenciaCliente(id);
-			conn.commit();
-		}
-		catch (SQLException e) 
-		{
-			System.err.println("SQLException:" + e.getMessage());
-			e.printStackTrace();
-			conn.rollback();
-			throw e;
-		} 
-		catch (Exception e) 
-		{
-			System.err.println("GeneralException:" + e.getMessage());
-			e.printStackTrace();
-			conn.rollback();
-			throw e;
-		}
-		finally 
-		{
-			try 
-			{
-				dao.cerrarRecursos();
-				if(this.conn!=null)
-					this.conn.close();
-			}
-			catch (SQLException exception) 
-			{
-				System.err.println("SQLException closing resources:" + exception.getMessage());
-				exception.printStackTrace();
-				throw exception;
-			}
-		}
-		
-		return asistencias;
-	}
 
-	public void deleteFuncion(int id) throws Exception
-	{
-		DAOFunciones dao = new DAOFunciones();
-		DAOEntradas daoEnt = new DAOEntradas();
-		try
+		public int darAsistencias(int id) throws Exception
 		{
-			this.conn = darConexion();
-			conn.setAutoCommit(false);
-			dao.setConn(conn);
-			daoEnt.setConn(conn);
-			dao.cancelarFuncion(id);
-			daoEnt.devolverEntradasFuncionCancelada(id);
-			conn.commit();
-		}
-		catch (SQLException e) 
-		{
-			System.err.println("SQLException:" + e.getMessage());
-			e.printStackTrace();
-			conn.rollback();
-			throw e;
-		} 
-		catch (Exception e) 
-		{
-			System.err.println("GeneralException:" + e.getMessage());
-			e.printStackTrace();
-			conn.rollback();
-			throw e;
-		}
-		finally 
-		{
-			try 
+			DAOFunciones dao = new DAOFunciones();
+			int asistencias = -1;
+			try
 			{
-				dao.cerrarRecursos();
-				if(this.conn!=null)
-					this.conn.close();
+				this.conn = darConexion();
+				conn.setAutoCommit(false);
+				dao.setConn(conn);
+				asistencias = dao.darAsistenciaCliente(id);
+				conn.commit();
 			}
-			catch (SQLException exception) 
+			catch (SQLException e) 
 			{
-				System.err.println("SQLException closing resources:" + exception.getMessage());
-				exception.printStackTrace();
-				throw exception;
+				System.err.println("SQLException:" + e.getMessage());
+				e.printStackTrace();
+				conn.rollback();
+				throw e;
+			} 
+			catch (Exception e) 
+			{
+				System.err.println("GeneralException:" + e.getMessage());
+				e.printStackTrace();
+				conn.rollback();
+				throw e;
+			}
+			finally 
+			{
+				try 
+				{
+					dao.cerrarRecursos();
+					if(this.conn!=null)
+						this.conn.close();
+				}
+				catch (SQLException exception) 
+				{
+					System.err.println("SQLException closing resources:" + exception.getMessage());
+					exception.printStackTrace();
+					throw exception;
+				}
+			}
+
+			return asistencias;
+		}
+		public int darNoAsistencias(int id) throws Exception
+		{
+			DAOFunciones dao = new DAOFunciones();
+			int asistencias = -1;
+			try
+			{
+				this.conn = darConexion();
+				conn.setAutoCommit(false);
+				dao.setConn(conn);
+				asistencias = dao.darNoAsistenciaCliente(id);
+				conn.commit();
+			}
+			catch (SQLException e) 
+			{
+				System.err.println("SQLException:" + e.getMessage());
+				e.printStackTrace();
+				conn.rollback();
+				throw e;
+			} 
+			catch (Exception e) 
+			{
+				System.err.println("GeneralException:" + e.getMessage());
+				e.printStackTrace();
+				conn.rollback();
+				throw e;
+			}
+			finally 
+			{
+				try 
+				{
+					dao.cerrarRecursos();
+					if(this.conn!=null)
+						this.conn.close();
+				}
+				catch (SQLException exception) 
+				{
+					System.err.println("SQLException closing resources:" + exception.getMessage());
+					exception.printStackTrace();
+					throw exception;
+				}
+			}
+
+			return asistencias;
+		}
+
+		public void deleteFuncion(int id) throws Exception
+		{
+			DAOFunciones dao = new DAOFunciones();
+			DAOEntradas daoEnt = new DAOEntradas();
+			try
+			{
+				this.conn = darConexion();
+				conn.setAutoCommit(false);
+				dao.setConn(conn);
+				daoEnt.setConn(conn);
+				dao.cancelarFuncion(id);
+				daoEnt.devolverEntradasFuncionCancelada(id);
+				conn.commit();
+			}
+			catch (SQLException e) 
+			{
+				System.err.println("SQLException:" + e.getMessage());
+				e.printStackTrace();
+				conn.rollback();
+				throw e;
+			} 
+			catch (Exception e) 
+			{
+				System.err.println("GeneralException:" + e.getMessage());
+				e.printStackTrace();
+				conn.rollback();
+				throw e;
+			}
+			finally 
+			{
+				try 
+				{
+					dao.cerrarRecursos();
+					if(this.conn!=null)
+						this.conn.close();
+				}
+				catch (SQLException exception) 
+				{
+					System.err.println("SQLException closing resources:" + exception.getMessage());
+					exception.printStackTrace();
+					throw exception;
+				}
 			}
 		}
+
 	}
-	
-}
