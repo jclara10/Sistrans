@@ -1,6 +1,7 @@
 package dtm;
 
 import vos.ListaFunciones;
+import vos.ListaRentabilidades;
 import vos.ListaUsuarios;
 
 public class IncompleteReplyException extends Exception 
@@ -18,6 +19,8 @@ public class IncompleteReplyException extends Exception
 	 * Atributo con las respuestas parciales
 	 */
 	private ListaFunciones partialResponseFunciones;
+	
+	private ListaRentabilidades partialResponseRentabilidades;
 	
 	/**
 	 * Método constructor de la clase IncompleteReplyException
@@ -41,6 +44,11 @@ public class IncompleteReplyException extends Exception
 		this.partialResponseFunciones = partialResponse;
 	}
 	
+	public IncompleteReplyException(String message,ListaRentabilidades partialResponse){
+		super(message);
+		this.partialResponseRentabilidades = partialResponse;
+	}
+	
 	/**
 	 * Método que retorna la respuesta parcial
 	 * @return ListaVideos - respuesta parcial
@@ -55,6 +63,14 @@ public class IncompleteReplyException extends Exception
 	 */
 	public ListaFunciones getPartialResponseFunciones(){
 		return this.partialResponseFunciones;
+	}
+	
+	/**
+	 * Método que retorna la respuesta parcial
+	 * @return ListaVideos - respuesta parcial
+	 */
+	public ListaRentabilidades getPartialResponseRentabilidades(){
+		return this.partialResponseRentabilidades;
 	}
 
 }

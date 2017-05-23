@@ -14,7 +14,7 @@ public class ListaFunciones
 		super();
 		this.funciones = funciones;
 	}
-	
+
 	public ListaFunciones() {
 		funciones = new ArrayList<Funcion>();
 	}
@@ -26,9 +26,9 @@ public class ListaFunciones
 	public void setFunciones(List<Funcion> funciones) {
 		this.funciones = funciones;
 	}	
-	
+
 	public void addFunciones(ListaFunciones funcionesNew){
 		this.funciones.addAll(funcionesNew.getFunciones());
-}
+	}
 
 }

@@ -23,6 +23,8 @@ import vos.Espectaculo;
 import vos.Funcion;
 import vos.ListaEntradas;
 import vos.ListaFunciones;
+import vos.ListaRentabilidades;
+import vos.RentabilidadCompania;
 
 @Path("/festivAndes")
 public class FestivAndesServices 
@@ -82,6 +84,25 @@ public class FestivAndesServices
 			return Response.status(500).entity(doErrorMessage(e)).build();
 		}
 		return Response.status(200).entity(funciones).build();
+	}
+	
+	@GET
+	@Path("/funciones/{nombreCompania}")
+	@Consumes(MediaType.APPLICATION_JSON)
+	@Produces(MediaType.APPLICATION_JSON)
+	public Response darRentabilidad(@javax.ws.rs.PathParam("nombreCompania") String nombreCompania) 
+	{
+		FestivAndesTransactionManager tm = new FestivAndesTransactionManager(getPath());
+		ListaRentabilidades rentabilidad;
+
+		try 
+		{
+			rentabilidad = tm.darRentabilidadRemote(nombreCompania);
+		} catch (Exception e) 
+		{
+			return Response.status(500).entity(doErrorMessage(e)).build();
+		}
+		return Response.status(200).entity(rentabilidad).build();
 	}
 
 	/**TOCA ARREGLAR ESTO PORQUE EL PARAMETRO ESTÁ MAL

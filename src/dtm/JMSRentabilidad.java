@@ -1,14 +1,3 @@
-/**-------------------------------------------------------------------
- * $Id$
- * Universidad de los Andes (Bogotá - Colombia)
- * Departamento de Ingeniería de Sistemas y Computación
- *
- * Materia: Sistemas Transaccionales
- * Ejercicio: VideoAndes
- * Autor: Juan Felipe García - jf.garcia268@uniandes.edu.co
- * -------------------------------------------------------------------
- */
-
 package dtm;
 
 import java.util.ArrayList;
@@ -38,32 +27,24 @@ import javax.naming.NamingException;
 
 import org.codehaus.jackson.map.ObjectMapper;
 
-import dao.DAOClientes;
-import dao.DAOCompaniasDeTeatro;
-import dao.DAOEntradas;
-import dao.DAOEscenarios;
-import dao.DAOEspectaculos;
 import dao.DAOFunciones;
-import dao.DAOSillas;
-import dao.DAOUsuariosNoRegistrados;
+import dao.DAORentabilidad;
 import tm.FestivAndesTransactionManager;
-import vos.Abono;
 import vos.Cliente;
 import vos.Entrada;
 import vos.ListaFunciones;
+import vos.ListaRentabilidades;
+import vos.RentabilidadCompania;
 
-/**
- * Clase Manejador de JMS  que se manda y recibe 
- */
-public class JMSFunciones implements MessageListener, ExceptionListener
+public class JMSRentabilidad implements MessageListener, ExceptionListener
 {
 
 	/**
 	 * Atributo tipo JMSManager para manejar la única instancia del patron singleton
 	 */
-	private static JMSFunciones instancia;
+	private static JMSRentabilidad instancia;
 
-	private ListaFunciones respuesta;
+	private ListaRentabilidades respuesta;
 
 	/**
 	 * Atributo tipo TopicSession que se usa para la conexión a los topics 
@@ -110,7 +91,7 @@ public class JMSFunciones implements MessageListener, ExceptionListener
 	/**
 	 * Atributo que representa el topic: topicAllAlgo
 	 */
-	private String topicAllFunciones;
+	private String topicAllRentabilidades;
 
 	/////Protocol
 
@@ -128,27 +109,27 @@ public class JMSFunciones implements MessageListener, ExceptionListener
 	/**
 	 * Atributo que representa, dentro del mensaje, la solicitud de todos los videos de manera distribuida
 	 */
-	public final static String GET_ALL_FUNCIONES_ASK = "GETALLFUNCIONES";
+	public final static String GET_ALL_RENTABILIDADES_ASK = "GETALLRENTABILIDADES";
 
 	/**
 	 * Atributo que representa, dentro del mensaje, la respuesta del requerimiento dar todos los videos.
 	 */
-	public final static String GET_ALL_FUNCIONES_REPLY = "GETALLFUNCIONESRES";
+	public final static String GET_ALL_RENTABILIDADES_REPLY = "GETALLRENTABILIDADESRES";
 
 	/**
 	 * Atributo que representa, dentro del mensaje, el conector para el formateo de todos los mensajes
 	 */
 	public final static String CONNECTOR = "@@@";
-
-
+	
+	
 	public void setUpMaster(FestivAndesTransactionManager festivAndesMaster)
 	{
 		this.master =  festivAndesMaster;
 	}
 
-	public static JMSFunciones darInstacia(FestivAndesTransactionManager festivAndesMaster)
+	public static JMSRentabilidad darInstacia(FestivAndesTransactionManager festivAndesMaster)
 	{
-		instancia = instancia == null? new JMSFunciones() : instancia;
+		instancia = instancia == null? new JMSRentabilidad() : instancia;
 		instancia.setUpMaster(festivAndesMaster);
 		return instancia;
 	}
@@ -157,9 +138,9 @@ public class JMSFunciones implements MessageListener, ExceptionListener
 	{
 		for(Object ob : recursos)
 		{
-			if(ob instanceof DAOFunciones)
+			if(ob instanceof DAORentabilidad)
 				try {
-					((DAOFunciones) ob).cerrarRecursos();
+					((DAORentabilidad) ob).cerrarRecursos();
 				} catch (Exception ex) {
 					ex.printStackTrace();
 				}
@@ -179,11 +160,11 @@ public class JMSFunciones implements MessageListener, ExceptionListener
 		try {
 			this.numberAppsTotal = numerApps - 1;
 			this.myQueue = myQueue;
-			this.topicAllFunciones = topicAllAlgo;
+			this.topicAllRentabilidades = topicAllAlgo;
 			setupMyQueue();
 			setupSubscriptions();
 			waiting = false;
-			respuesta = new ListaFunciones();
+			respuesta = new ListaRentabilidades();
 			this.recursos = new ArrayList<Object>();
 		} catch (JMSException e) {
 			e.printStackTrace();
@@ -191,9 +172,9 @@ public class JMSFunciones implements MessageListener, ExceptionListener
 			e.printStackTrace();
 		}
 	}
-
-
-	public ListaFunciones getFuncionesResponse() throws IncompleteReplyException, JMSException, NamingException, InterruptedException, NonReplyException {
+	
+	public ListaRentabilidades getRentabilidadResponse() throws IncompleteReplyException, JMSException, NamingException, InterruptedException, NonReplyException 
+	{
 		sendMessage(); // manda el mensaje de solicitud del requerimiento al topic
 		waiting = true; // Lo hace para< indicar que si esta esperando respuestas
 		this.numberApps = 0; // Pone en 0 el numero de respuestas que han llegado
@@ -205,7 +186,8 @@ public class JMSFunciones implements MessageListener, ExceptionListener
 		}
 
 		if(count == TIME_OUT){ // Verifica si se cumpli� el time out 
-			if(this.respuesta.getFunciones().isEmpty()){
+			if(this.respuesta == null)
+			{
 				waiting = false;
 				this.numberApps = 0;
 				throw new NonReplyException("Time Out - No Reply"); // Exception que indica que se cumplido el time out y nadie respondido 
@@ -216,13 +198,13 @@ public class JMSFunciones implements MessageListener, ExceptionListener
 		}
 		waiting = false;
 		this.numberApps = 0;
-		if(respuesta.getFunciones().isEmpty())
-			throw new NonReplyException("Got all responses but no videos were detected"); // Exception que indica que todos respondieron pero no llegaron videos
-		ListaFunciones res = respuesta;
-		respuesta = new ListaFunciones();
+		if(respuesta == null)
+			throw new NonReplyException("Got all responses but no answers were detected"); // Exception que indica que todos respondieron pero no llegaron videos
+		ListaRentabilidades res = respuesta;
+		respuesta = new ListaRentabilidades();
 		return res; // Retorna con la respuesta completa de todas las aplicaciones
 	}
-
+	
 	/**
 	 * Método que inicializa todas las suscripciones a los topics.
 	 * En este caso solo al topic de topicAllVideos
@@ -233,7 +215,7 @@ public class JMSFunciones implements MessageListener, ExceptionListener
 		// init Topic para consumir donde llegan las peticiones
 		try {
 			InitialContext ctx = new InitialContext();
-			this.topic = (Topic) ctx.lookup(topicAllFunciones);
+			this.topic = (Topic) ctx.lookup(topicAllRentabilidades);
 			TopicConnectionFactory connFactory = (TopicConnectionFactory) ctx.lookup(REMOTE_CONNECTION_FACTORY);
 			TopicConnection topicConn = connFactory.createTopicConnection();
 			this.topicSession = topicConn.createTopicSession(false, Session.AUTO_ACKNOWLEDGE);
@@ -247,7 +229,7 @@ public class JMSFunciones implements MessageListener, ExceptionListener
 			e.printStackTrace();
 		}                                                                      
 	}
-
+	
 	/**
 	 * Método que manda el mensaje para solicitar el requerimiento de las todas las funciones
 	 * <b>post: </b> se han mandado todos los mensaje
@@ -261,12 +243,11 @@ public class JMSFunciones implements MessageListener, ExceptionListener
 		topicPublisher.setDeliveryMode(DeliveryMode.NON_PERSISTENT);
 		TextMessage txtMsg = topicSession.createTextMessage();
 		txtMsg.setJMSType("TextMessage");
-		txtMsg.setText(GET_ALL_FUNCIONES_ASK + CONNECTOR + this.myQueue);
+		txtMsg.setText(GET_ALL_RENTABILIDADES_ASK + CONNECTOR + this.myQueue);
 		topicPublisher.publish(txtMsg);
 		System.out.println("published: " + txtMsg.getText());
 	}
-
-
+	
 	/**
 	 * Método que publica y suscribe la cola personal de la aplicación
 	 * <b>post: </b> se han publicado y suscrito a la cola personal
@@ -283,7 +264,7 @@ public class JMSFunciones implements MessageListener, ExceptionListener
 		queueConn.setExceptionListener(this);
 		queueConn.start();
 	}
-
+	
 	/**
 	 * Método que manda el mensaje que llega como parámetro a la cola que llega como parámetro 
 	 * @param queueName - ruta de la cola 
@@ -304,7 +285,7 @@ public class JMSFunciones implements MessageListener, ExceptionListener
 		System.out.println("sent: " + message.getText());
 		queueConn.close();
 	}
-
+	
 	/**
 	 * Método listener que recibe los mensajes, lo formatea y  hace lo que corresponde en cada caso: 
 	 * - Caso 1: a[0].equals(GET_ALL_VIDEO_ASK): llega la petición del requerimiento dar todos los video por lo 
@@ -324,19 +305,19 @@ public class JMSFunciones implements MessageListener, ExceptionListener
 			String mes = msg.getText();
 			System.out.println("received: " + mes);
 			String[] a = mes.split(CONNECTOR);
-			if(a[0].equals(GET_ALL_FUNCIONES_ASK) && !a[1].equals(this.myQueue))
+			if(a[0].equals(GET_ALL_RENTABILIDADES_ASK) && !a[1].equals(this.myQueue))
 			{
-				ListaFunciones funciones = this.master.darFuncionesLocal();
+				ListaRentabilidades rentabilidad = this.master.darRentabilidadLocal();
 				ObjectMapper mapper = new ObjectMapper();
-				String jsonString = mapper.writeValueAsString(funciones);
-				doResponseToQueue(a[1], GET_ALL_FUNCIONES_REPLY + CONNECTOR + jsonString);
+				String jsonString = mapper.writeValueAsString(rentabilidad);
+				doResponseToQueue(a[1], GET_ALL_RENTABILIDADES_REPLY + CONNECTOR + jsonString);
 			}
-			else if(a[0].equals(GET_ALL_FUNCIONES_REPLY))
+			else if(a[0].equals(GET_ALL_RENTABILIDADES_REPLY))
 			{
 				ObjectMapper mapper = new ObjectMapper();
 				if(waiting){
-					ListaFunciones obj = mapper.readValue(a[1], ListaFunciones.class);
-					this.respuesta.addFunciones(obj);
+					ListaRentabilidades obj = mapper.readValue(a[1], ListaRentabilidades.class);
+					this.respuesta.addRentabilidades(obj);
 					this.numberApps++;
 				}
 			}
@@ -345,7 +326,7 @@ public class JMSFunciones implements MessageListener, ExceptionListener
 			ex.printStackTrace();
 		}
 	}
-
+	
 	/**
 	 * Método que se llama con el error cuando hay un error de JMS
 	 */
@@ -353,4 +334,5 @@ public class JMSFunciones implements MessageListener, ExceptionListener
 	{
 		System.err.println("something bad happended: " + exception);
 	}
+	
 }

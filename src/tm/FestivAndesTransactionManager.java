@@ -14,8 +14,10 @@ import dao.DAOEntradas;
 import dao.DAOEscenarios;
 import dao.DAOEspectaculos;
 import dao.DAOFunciones;
+import dao.DAORentabilidad;
 import dtm.IncompleteReplyException;
 import dtm.JMSFunciones;
+import dtm.JMSRentabilidad;
 import dtm.NonReplyException;
 import vos.Abono;
 import vos.Cliente;
@@ -26,6 +28,8 @@ import vos.Espectaculo;
 import vos.Funcion;
 import vos.ListaEntradas;
 import vos.ListaFunciones;
+import vos.ListaRentabilidades;
+import vos.RentabilidadCompania;
 
 public class FestivAndesTransactionManager {
 
@@ -50,6 +54,8 @@ public class FestivAndesTransactionManager {
 	private int numberApps;
 
 	private String topicAllFunciones;
+	
+	private String nombreCompaniasMachete;
 
 	public FestivAndesTransactionManager(String contextPathP) 
 	{
@@ -908,6 +914,81 @@ public class FestivAndesTransactionManager {
 			}
 		}
 		return new ListaFunciones(funciones);
+	}
+
+	public ListaRentabilidades darRentabilidadRemote(String nombreCompania) throws Exception 
+	{
+		nombreCompaniasMachete = nombreCompania;
+		ListaRentabilidades rentabilidad;
+		DAORentabilidad dao = new DAORentabilidad();
+		ArrayList<RentabilidadCompania> rentabilidadLocal = new ArrayList<RentabilidadCompania>();
+		try {	
+			Connection conn = darConexion();
+			dao.setConn(conn);
+			rentabilidadLocal = dao.darRentabilidad(nombreCompania);
+
+			JMSRentabilidad instancia = JMSRentabilidad.darInstacia(this);
+			instancia.setUpJMSManager(this.numberApps, this.myQueue, this.topicAllFunciones);
+			rentabilidad = instancia.getRentabilidadResponse();  
+
+			rentabilidad.addRentabilidades(new ListaRentabilidades(rentabilidadLocal));
+			System.out.println("size:" + rentabilidad.getRentabilidades().size());
+		} catch (NonReplyException e) 
+		{
+			throw new IncompleteReplyException("No Reply from apps - Local Videos:",new ListaRentabilidades(rentabilidadLocal));
+		} catch (IncompleteReplyException e) {
+			ListaRentabilidades temp = e.getPartialResponseRentabilidades();
+			temp.addRentabilidades(new ListaRentabilidades(rentabilidadLocal));
+			throw new IncompleteReplyException("Incomplete Reply:",temp);
+		} catch (Exception e) {
+			e.printStackTrace();
+			throw e;
+		} finally {
+			try {
+				dao.cerrarRecursos();
+				if(this.conn!=null)
+					this.conn.close();
+			} catch (SQLException exception) {
+				System.err.println("SQLException closing resources:" + exception.getMessage());
+				exception.printStackTrace();
+				throw exception;
+			}
+		}
+		return rentabilidad; 
+	}
+
+	public ListaRentabilidades darRentabilidadLocal() throws Exception 
+	{
+		ArrayList<RentabilidadCompania> rentabilidad;
+		DAORentabilidad daoRentabilidad = new DAORentabilidad();
+		
+		try 
+		{
+			//////Transacción
+			this.conn = darConexion();
+			daoRentabilidad.setConn(conn);
+			rentabilidad = daoRentabilidad.darRentabilidad(nombreCompaniasMachete);
+
+		} catch (SQLException e) {
+			System.err.println("SQLException:" + e.getMessage());
+			e.printStackTrace();
+			throw e;
+		} catch (Exception e) {
+			System.err.println("GeneralException:" + e.getMessage());
+			e.printStackTrace();
+			throw e;
+		} finally {
+			try {
+				daoRentabilidad.cerrarRecursos();
+				if(this.conn!=null)
+					this.conn.close();
+			} catch (SQLException exception) {
+				System.err.println("SQLException closing resources:" + exception.getMessage());
+				exception.printStackTrace();
+				throw exception;
+			}
+		}
+		return new ListaRentabilidades(rentabilidad);
 	}
 
 }
