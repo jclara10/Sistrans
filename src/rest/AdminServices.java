@@ -10,7 +10,7 @@ import javax.ws.rs.Path;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.Response;
 
-import dtm.RegistrarAbonamientoJMS;
+import dtm.JMSFunciones;
 import tm.FestivAndesTransactionManager;
 
 @Path("admin")
@@ -47,7 +47,7 @@ public class AdminServices
 	public Response initApp() 
 	{
 		try {
-			RegistrarAbonamientoJMS manager = RegistrarAbonamientoJMS.darInstacia(new FestivAndesTransactionManager(getPath()));
+			JMSFunciones manager = JMSFunciones.darInstacia(new FestivAndesTransactionManager(getPath()));
 			initDataFromFile(manager);
 			System.out.println("InitApp1");
 		} catch (Exception e) {
@@ -60,7 +60,7 @@ public class AdminServices
 	 * Método que inicializa los atributos basicos de JMSManager
 	 * 
 	 */
-	public void initDataFromFile(RegistrarAbonamientoJMS manager) {
+	public void initDataFromFile(JMSFunciones manager) {
 		try {
 			String contextPathP = context.getRealPath("WEB-INF/ConnectionData");
 			String connectionDataPath = contextPathP + FestivAndesTransactionManager.CONNECTION_DATA_FILE_NAME_REMOTE;
@@ -71,10 +71,10 @@ public class AdminServices
 			prop.load(in);
 			in.close();
 			String myQueue = prop.getProperty("myQueue");
-			String topicAllVideos = prop.getProperty("topicAllVideos");
+			String topicAllUsuarios = prop.getProperty("topicAllUsuarios");
 			int numberApps = Integer.parseInt(prop.getProperty("numberApps"));
 			
-			manager.setUpJMSManager(numberApps, myQueue, topicAllVideos);
+			manager.setUpJMSManager(numberApps, myQueue, topicAllUsuarios);
 		} catch (Exception e) {
 			e.printStackTrace();
 		}

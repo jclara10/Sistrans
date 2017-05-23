@@ -50,33 +50,36 @@ import tm.FestivAndesTransactionManager;
 import vos.Abono;
 import vos.Cliente;
 import vos.Entrada;
+import vos.ListaFunciones;
 
 /**
  * Clase Manejador de JMS  que se manda y recibe 
  */
-public class RegistrarAbonamientoJMS implements MessageListener, ExceptionListener
+public class JMSFunciones implements MessageListener, ExceptionListener
 {
 
 	/**
 	 * Atributo tipo JMSManager para manejar la única instancia del patron singleton
 	 */
-	private static RegistrarAbonamientoJMS instancia;
-	
+	private static JMSFunciones instancia;
+
 	// FALTA
 	private Cliente respuestaCliente;
 
 	private Entrada respuestaEntradas;
-	
+
+	private ListaFunciones respuesta;
+
 	/**
 	 * Atributo tipo TopicSession que se usa para la conexión a los topics 
 	 */
 	private TopicSession topicSession;
-	
+
 	/**
 	 * Atributo tipo Topic que maneja la conexión al topic de dar todos los videos 
 	 */
 	private Topic topic;
-	
+
 	/**
 	 * ArrayList que guarda todos los recursos que se usan para la conexión a las colas y topics
 	 */
@@ -102,7 +105,7 @@ public class RegistrarAbonamientoJMS implements MessageListener, ExceptionListen
 	private FestivAndesTransactionManager master;
 
 	/////Queues:
-	
+
 	/**
 	 * Atributo que representa la cola personal de esta aplicación
 	 */
@@ -113,7 +116,7 @@ public class RegistrarAbonamientoJMS implements MessageListener, ExceptionListen
 	/**
 	 * Atributo que representa el topic: topicAllAlgo
 	 */
-	private String topicAllAlgo;
+	private String topicAllFunciones;
 
 	/////Protocol
 
@@ -126,17 +129,17 @@ public class RegistrarAbonamientoJMS implements MessageListener, ExceptionListen
 	/**
 	 * Ruta para la conexión al Remote Connection Factory
 	 */
-	public final static String REMOTE_CONNECTION_FACTORY = "java:jboss/exported/jms/RemoteConnectionFactory";	
+	public final static String REMOTE_CONNECTION_FACTORY = "java:global/RMQClient";	
 
 	/**
 	 * Atributo que representa, dentro del mensaje, la solicitud de todos los videos de manera distribuida
 	 */
-	public final static String GET_ALL_ALGO_ASK = "GETALLALGO";
+	public final static String GET_ALL_FUNCIONES_ASK = "GETALLFUNCIONES";
 
 	/**
 	 * Atributo que representa, dentro del mensaje, la respuesta del requerimiento dar todos los videos.
 	 */
-	public final static String GET_ALL_ALGO_REPLY = "GETALLALGORES";
+	public final static String GET_ALL_FUNCIONES_REPLY = "GETALLFUNCIONESRES";
 
 	/**
 	 * Atributo que representa, dentro del mensaje, el conector para el formateo de todos los mensajes
@@ -149,9 +152,9 @@ public class RegistrarAbonamientoJMS implements MessageListener, ExceptionListen
 		this.master =  festivAndesMaster;
 	}
 
-	public static RegistrarAbonamientoJMS darInstacia(FestivAndesTransactionManager festivAndesMaster)
+	public static JMSFunciones darInstacia(FestivAndesTransactionManager festivAndesMaster)
 	{
-		instancia = instancia == null? new RegistrarAbonamientoJMS() : instancia;
+		instancia = instancia == null? new JMSFunciones() : instancia;
 		instancia.setUpMaster(festivAndesMaster);
 		return instancia;
 	}
@@ -160,75 +163,9 @@ public class RegistrarAbonamientoJMS implements MessageListener, ExceptionListen
 	{
 		for(Object ob : recursos)
 		{
-			if(ob instanceof DAOClientes)
-				try {
-					((DAOClientes) ob).cerrarRecursos();
-				} catch (Exception ex) {
-					ex.printStackTrace();
-				}
-		}
-		for(Object ob : recursos)
-		{
-			if(ob instanceof DAOCompaniasDeTeatro)
-				try {
-					((DAOCompaniasDeTeatro) ob).cerrarRecursos();
-				} catch (Exception ex) {
-					ex.printStackTrace();
-				}
-		}
-		for(Object ob : recursos)
-		{
-			if(ob instanceof DAOEntradas)
-				try {
-					((DAOEntradas) ob).cerrarRecursos();
-				} catch (Exception ex) {
-					ex.printStackTrace();
-				}
-		}
-		for(Object ob : recursos)
-		{
-			if(ob instanceof DAOEscenarios)
-				try {
-					((DAOEscenarios) ob).cerrarRecursos();
-				} catch (Exception ex) {
-					ex.printStackTrace();
-				}
-		}
-		
-		for(Object ob : recursos)
-		{
-			if(ob instanceof DAOEspectaculos)
-				try {
-					((DAOEspectaculos) ob).cerrarRecursos();
-				} catch (Exception ex) {
-					ex.printStackTrace();
-				}
-		}
-		for(Object ob : recursos)
-		{
 			if(ob instanceof DAOFunciones)
 				try {
 					((DAOFunciones) ob).cerrarRecursos();
-				} catch (Exception ex) {
-					ex.printStackTrace();
-				}
-		}
-		
-		for(Object ob : recursos)
-		{
-			if(ob instanceof DAOSillas)
-				try {
-					((DAOSillas) ob).cerrarRecursos();
-				} catch (Exception ex) {
-					ex.printStackTrace();
-				}
-		}
-		
-		for(Object ob : recursos)
-		{
-			if(ob instanceof DAOUsuariosNoRegistrados)
-				try {
-					((DAOUsuariosNoRegistrados) ob).cerrarRecursos();
 				} catch (Exception ex) {
 					ex.printStackTrace();
 				}
@@ -248,11 +185,11 @@ public class RegistrarAbonamientoJMS implements MessageListener, ExceptionListen
 		try {
 			this.numberAppsTotal = numerApps - 1;
 			this.myQueue = myQueue;
-			this.topicAllAlgo = topicAllAlgo;
+			this.topicAllFunciones = topicAllAlgo;
 			setupMyQueue();
 			setupSubscriptions();
 			waiting = false;
-			//respuesta = new ListaVideos();
+			respuesta = new ListaFunciones();
 			this.recursos = new ArrayList<Object>();
 		} catch (JMSException e) {
 			e.printStackTrace();
@@ -262,25 +199,19 @@ public class RegistrarAbonamientoJMS implements MessageListener, ExceptionListen
 	}
 
 
-	public void doReq(Abono abono) throws  JMSException, NamingException, InterruptedException
-	{
+	public ListaFunciones getFuncionesResponse() throws IncompleteReplyException, JMSException, NamingException, InterruptedException, NonReplyException {
 		sendMessage(); // manda el mensaje de solicitud del requerimiento al topic
 		waiting = true; // Lo hace para< indicar que si esta esperando respuestas
 		this.numberApps = 0; // Pone en 0 el numero de respuestas que han llegado
 
 		int count = 0;
-		while(TIME_OUT != count && this.numberApps != this.numberAppsTotal)
-		{
+		while(TIME_OUT != count && this.numberApps != this.numberAppsTotal){
 			TimeUnit.SECONDS.sleep(1); // espera activa que termina cuando se ha cumplido el time out o cuando han llegado todas las respuestas esperadas
 			count++;
 		}
-		
-		respuestaCliente.setEsAbonado("S�");
-		
-		/**
-		if(count == TIME_OUT)
-		{ // Verifica si se cumplió el time out 
-			if(this.respuesta.getVideos().isEmpty()){
+
+		if(count == TIME_OUT){ // Verifica si se cumpli� el time out 
+			if(this.respuesta.getFunciones().isEmpty()){
 				waiting = false;
 				this.numberApps = 0;
 				throw new NonReplyException("Time Out - No Reply"); // Exception que indica que se cumplido el time out y nadie respondido 
@@ -291,11 +222,11 @@ public class RegistrarAbonamientoJMS implements MessageListener, ExceptionListen
 		}
 		waiting = false;
 		this.numberApps = 0;
-		if(respuesta.getVideos().isEmpty())
+		if(respuesta.getFunciones().isEmpty())
 			throw new NonReplyException("Got all responses but no videos were detected"); // Exception que indica que todos respondieron pero no llegaron videos
-		ListaVideos res = respuesta;
-		respuesta = new ListaVideos();
-		return res; // Retorna con la respuesta completa de todas las aplicaciones*/
+		ListaFunciones res = respuesta;
+		respuesta = new ListaFunciones();
+		return res; // Retorna con la respuesta completa de todas las aplicaciones
 	}
 
 	/**
@@ -308,7 +239,7 @@ public class RegistrarAbonamientoJMS implements MessageListener, ExceptionListen
 		// init Topic para consumir donde llegan las peticiones
 		try {
 			InitialContext ctx = new InitialContext();
-			this.topic = (Topic) ctx.lookup(topicAllAlgo);
+			this.topic = (Topic) ctx.lookup(topicAllFunciones);
 			TopicConnectionFactory connFactory = (TopicConnectionFactory) ctx.lookup(REMOTE_CONNECTION_FACTORY);
 			TopicConnection topicConn = connFactory.createTopicConnection();
 			this.topicSession = topicConn.createTopicSession(false, Session.AUTO_ACKNOWLEDGE);
@@ -324,20 +255,23 @@ public class RegistrarAbonamientoJMS implements MessageListener, ExceptionListen
 	}
 
 	/**
-	 * Método que manda el mensaje para solicitar el requerimiento de las todos los videos
+	 * Método que manda el mensaje para solicitar el requerimiento de las todas las funciones
 	 * <b>post: </b> se han mandado todos los mensaje
 	 * @throws JMSException - Caso de JMSException
 	 * @throws NamingException - Caso de NamingException
 	 */
-	public void sendMessage() throws JMSException, NamingException{
-		// conecta al Topic para mandar la petición
+	public void sendMessage() throws JMSException, NamingException
+	{
+		// conecta al Topic para mandar la petici�n
 		TopicPublisher topicPublisher = this.topicSession.createPublisher(this.topic);
 		topicPublisher.setDeliveryMode(DeliveryMode.NON_PERSISTENT);
-		TextMessage message = topicSession.createTextMessage();
-		message.setText(GET_ALL_ALGO_ASK + CONNECTOR + this.myQueue);
-		topicPublisher.publish(message);
-		System.out.println("published: " + message.getText());
+		TextMessage txtMsg = topicSession.createTextMessage();
+		txtMsg.setJMSType("TextMessage");
+		txtMsg.setText(GET_ALL_FUNCIONES_ASK + CONNECTOR + this.myQueue);
+		topicPublisher.publish(txtMsg);
+		System.out.println("published: " + txtMsg.getText());
 	}
+
 
 	/**
 	 * Método que publica y suscribe la cola personal de la aplicación
@@ -388,23 +322,27 @@ public class RegistrarAbonamientoJMS implements MessageListener, ExceptionListen
 	 */
 	public void onMessage(Message message)
 	{
-		//ESTO OBVIAMENTE ESTA MAL PERO NO TENGO NI IDEA COMO ARREGLARLO
-		
-		TextMessage msg = (TextMessage) message;
+		TextMessage msg =(TextMessage) message;
+		System.out.println("Mensaje: "+ message);
+
 		try 
 		{
 			String mes = msg.getText();
 			System.out.println("received: " + mes);
 			String[] a = mes.split(CONNECTOR);
-			if(a[0].equals(GET_ALL_ALGO_ASK) && !a[1].equals(this.myQueue)){
-				this.master.abonarCliente(abono);
-				doResponseToQueue(a[1], GET_ALL_ALGO_REPLY + CONNECTOR + jsonString);
+			if(a[0].equals(GET_ALL_FUNCIONES_ASK) && !a[1].equals(this.myQueue))
+			{
+				ListaFunciones funciones = this.master.darFuncionesLocal();
+				ObjectMapper mapper = new ObjectMapper();
+				String jsonString = mapper.writeValueAsString(funciones);
+				doResponseToQueue(a[1], GET_ALL_FUNCIONES_REPLY + CONNECTOR + jsonString);
 			}
-			else if(a[0].equals(GET_ALL_ALGO_REPLY)){
+			else if(a[0].equals(GET_ALL_FUNCIONES_REPLY))
+			{
 				ObjectMapper mapper = new ObjectMapper();
 				if(waiting){
-					ListaVideos obj = mapper.readValue(a[1], ListaVideos.class);
-					this.respuesta.addVideo(obj);
+					ListaFunciones obj = mapper.readValue(a[1], ListaFunciones.class);
+					this.respuesta.addFunciones(obj);
 					this.numberApps++;
 				}
 			}

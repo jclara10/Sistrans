@@ -22,6 +22,7 @@ import vos.Escenario;
 import vos.Espectaculo;
 import vos.Funcion;
 import vos.ListaEntradas;
+import vos.ListaFunciones;
 
 @Path("/festivAndes")
 public class FestivAndesServices 
@@ -32,15 +33,15 @@ public class FestivAndesServices
 	private String getPath() {
 		return context.getRealPath("WEB-INF/ConnectionData");
 	}
-	
+
 	private String doErrorMessage(Exception e)
 	{
 		return "{ \"ERROR\": \""+ e.getMessage() + "\"}" ;
 	}
-	
-	
+
+
 	// GET SERVICES
-	
+
 	@GET
 	@Path("/cliente/{Id: \\d+}/asistencias")
 	@Consumes(MediaType.APPLICATION_JSON)
@@ -63,7 +64,26 @@ public class FestivAndesServices
 		}
 		return Response.status(200).entity(respuesta).build();
 	}
-	
+
+	@GET
+	@Path("/funciones")
+	@Consumes(MediaType.APPLICATION_JSON)
+	@Produces(MediaType.APPLICATION_JSON)
+	public Response darFuncionesDisponibles() 
+	{
+		FestivAndesTransactionManager tm = new FestivAndesTransactionManager(getPath());
+		ListaFunciones funciones;
+
+		try 
+		{
+			funciones = tm.darFuncionesRemote();
+		} catch (Exception e) 
+		{
+			return Response.status(500).entity(doErrorMessage(e)).build();
+		}
+		return Response.status(200).entity(funciones).build();
+	}
+
 	/**TOCA ARREGLAR ESTO PORQUE EL PARAMETRO ESTÁ MAL
 	 * 
 	 * 
@@ -101,10 +121,10 @@ public class FestivAndesServices
 		}
 		return Response.status(200).entity(idCliente).build();
 	}*/
-	
-	
+
+
 	// POST SERVICES
-	
+
 	@POST
 	@Path("/clientes")
 	@Consumes(MediaType.APPLICATION_JSON)
@@ -122,7 +142,7 @@ public class FestivAndesServices
 		}
 		return Response.status(200).entity(cliente).build();
 	}
-	
+
 	@POST
 	@Path("/companias")
 	@Consumes(MediaType.APPLICATION_JSON)
@@ -140,7 +160,7 @@ public class FestivAndesServices
 		}
 		return Response.status(200).entity(compania).build();
 	}
-	
+
 	@POST
 	@Path("/escenarios")
 	@Consumes(MediaType.APPLICATION_JSON)
@@ -158,7 +178,7 @@ public class FestivAndesServices
 		}
 		return Response.status(200).entity(escenario).build();
 	}
-	
+
 	@POST
 	@Path("/espectaculos")
 	@Consumes(MediaType.APPLICATION_JSON)
@@ -176,7 +196,7 @@ public class FestivAndesServices
 		}
 		return Response.status(200).entity(espectaculo).build();
 	}
-	
+
 	@POST
 	@Path("/funciones")
 	@Consumes(MediaType.APPLICATION_JSON)
@@ -194,9 +214,9 @@ public class FestivAndesServices
 		}
 		return Response.status(200).entity(funcion).build();
 	}
-	
+
 	// PUT SERVICES
-	
+
 	@PUT
 	@Path("/funcion/entrada")
 	@Consumes(MediaType.APPLICATION_JSON)
@@ -215,7 +235,7 @@ public class FestivAndesServices
 		}
 		return Response.status(200).entity(entrada).build();
 	}
-	
+
 	@PUT
 	@Path("/funcion/entradas")
 	@Consumes(MediaType.APPLICATION_JSON)
@@ -234,7 +254,7 @@ public class FestivAndesServices
 		}
 		return Response.status(200).entity(entradas).build();
 	}
-	
+
 	@PUT
 	@Path("/funcion")
 	@Consumes(MediaType.APPLICATION_JSON)
@@ -252,7 +272,7 @@ public class FestivAndesServices
 		}
 		return Response.status(200).entity(funcion).build();
 	}
-	
+
 	@PUT
 	@Path("/cliente")
 	@Consumes(MediaType.APPLICATION_JSON)
@@ -270,7 +290,7 @@ public class FestivAndesServices
 		}
 		return Response.status(200).entity(cliente).build();
 	}
-	
+
 	@PUT
 	@Path("/cliente/abonamiento")
 	@Consumes(MediaType.APPLICATION_JSON)
@@ -288,9 +308,9 @@ public class FestivAndesServices
 		}
 		return Response.status(200).entity(abono).build();
 	}
-	
+
 	// DELETE SERVICES
-	
+
 	@DELETE
 	@Path("{Id: \\d+}")
 	@Consumes(MediaType.APPLICATION_JSON)
@@ -308,7 +328,7 @@ public class FestivAndesServices
 		}
 		return Response.status(200).entity(id).build();
 	}
-	
+
 	/** TOCA ARREGLARLO PORQUE LOS PARAMETROS ESTAN MAL
 	@DELETE
 	@Path("/devolverAbono/idCliente/idAbono")
@@ -327,7 +347,7 @@ public class FestivAndesServices
 		}
 		return Response.status(200).entity(idAbono).build();
 	}*/
-	
+
 	@DELETE
 	@Path("{Id: \\d+}")
 	@Consumes(MediaType.APPLICATION_JSON)
@@ -345,5 +365,5 @@ public class FestivAndesServices
 		}
 		return Response.status(200).entity(id).build();
 	}
-	
+
 }
