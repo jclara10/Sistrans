@@ -18,6 +18,7 @@ import dao.DAORentabilidad;
 import dtm.IncompleteReplyException;
 import dtm.JMSFunciones;
 import dtm.JMSRentabilidad;
+import dtm.JMSRetirarCompania;
 import dtm.NonReplyException;
 import vos.Abono;
 import vos.Cliente;
@@ -26,6 +27,7 @@ import vos.Entrada;
 import vos.Escenario;
 import vos.Espectaculo;
 import vos.Funcion;
+import vos.ListaCompaniasRetiradas;
 import vos.ListaEntradas;
 import vos.ListaFunciones;
 import vos.ListaRentabilidades;
@@ -56,6 +58,8 @@ public class FestivAndesTransactionManager {
 	private String topicAllFunciones;
 	
 	private String nombreCompaniasMachete;
+	
+	private String companiaEliminar;
 
 	public FestivAndesTransactionManager(String contextPathP) 
 	{
@@ -989,6 +993,81 @@ public class FestivAndesTransactionManager {
 			}
 		}
 		return new ListaRentabilidades(rentabilidad);
+	}
+
+	public ListaCompaniasRetiradas darCompaniasRetiradasLocal() throws Exception 
+	{
+		ArrayList<CompaniaDeTeatro> companias;
+		DAOCompaniasDeTeatro daoCompanias = new DAOCompaniasDeTeatro();
+		
+		try 
+		{
+			//////Transacción
+			this.conn = darConexion();
+			daoCompanias.setConn(conn);
+			companias = daoCompanias.darCompaniaRetiradas(companiaEliminar);
+
+		} catch (SQLException e) {
+			System.err.println("SQLException:" + e.getMessage());
+			e.printStackTrace();
+			throw e;
+		} catch (Exception e) {
+			System.err.println("GeneralException:" + e.getMessage());
+			e.printStackTrace();
+			throw e;
+		} finally {
+			try {
+				daoCompanias.cerrarRecursos();
+				if(this.conn!=null)
+					this.conn.close();
+			} catch (SQLException exception) {
+				System.err.println("SQLException closing resources:" + exception.getMessage());
+				exception.printStackTrace();
+				throw exception;
+			}
+		}
+		return new ListaCompaniasRetiradas(companias);
+	}
+
+	public ListaCompaniasRetiradas deleteCompaniaRemoto(String nombre) throws Exception 
+	{
+		companiaEliminar = nombre;
+		ListaCompaniasRetiradas companias;
+		DAOCompaniasDeTeatro dao = new DAOCompaniasDeTeatro();
+		ArrayList<CompaniaDeTeatro> companiasLocal = new ArrayList<CompaniaDeTeatro>();
+		try {	
+			Connection conn = darConexion();
+			dao.setConn(conn);
+			companiasLocal = dao.darCompaniaRetiradas(companiaEliminar);
+
+			JMSRetirarCompania instancia = JMSRetirarCompania.darInstacia(this);
+			instancia.setUpJMSManager(this.numberApps, this.myQueue, this.topicAllFunciones);
+			companias = instancia.getCompaniasResponse();  
+
+			companias.addCompanias(new ListaCompaniasRetiradas(companiasLocal));
+			System.out.println("size:" + companias.getCompanias().size());
+		} catch (NonReplyException e) 
+		{
+			throw new IncompleteReplyException("No Reply from apps - Local Videos:",new ListaCompaniasRetiradas(companiasLocal));
+		} catch (IncompleteReplyException e) {
+			ListaCompaniasRetiradas temp = e.getPartialResponseCompanias();
+			temp.addCompanias(new ListaCompaniasRetiradas(companiasLocal));
+			throw new IncompleteReplyException("Incomplete Reply:",temp);
+		} catch (Exception e) {
+			e.printStackTrace();
+			throw e;
+		} finally {
+			try {
+				dao.cerrarRecursos();
+				if(this.conn!=null)
+					this.conn.close();
+			} catch (SQLException exception) {
+				System.err.println("SQLException closing resources:" + exception.getMessage());
+				exception.printStackTrace();
+				throw exception;
+			}
+		}
+		return companias; 
 	}
 
 }

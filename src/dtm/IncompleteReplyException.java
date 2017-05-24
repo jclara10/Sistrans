@@ -1,5 +1,6 @@
 package dtm;
 
+import vos.ListaCompaniasRetiradas;
 import vos.ListaFunciones;
 import vos.ListaRentabilidades;
 import vos.ListaUsuarios;
@@ -21,6 +22,8 @@ public class IncompleteReplyException extends Exception
 	private ListaFunciones partialResponseFunciones;
 	
 	private ListaRentabilidades partialResponseRentabilidades;
+	
+	private ListaCompaniasRetiradas partialResponseCompanias;
 	
 	/**
 	 * Método constructor de la clase IncompleteReplyException
@@ -49,6 +52,11 @@ public class IncompleteReplyException extends Exception
 		this.partialResponseRentabilidades = partialResponse;
 	}
 	
+	public IncompleteReplyException(String message,ListaCompaniasRetiradas partialResponse){
+		super(message);
+		this.partialResponseCompanias = partialResponse;
+	}
+	
 	/**
 	 * Método que retorna la respuesta parcial
 	 * @return ListaVideos - respuesta parcial
@@ -71,6 +79,11 @@ public class IncompleteReplyException extends Exception
 	 */
 	public ListaRentabilidades getPartialResponseRentabilidades(){
 		return this.partialResponseRentabilidades;
+	}
+	
+	public ListaCompaniasRetiradas getPartialResponseCompanias()
+	{
+		return this.partialResponseCompanias;
 	}
 
 }

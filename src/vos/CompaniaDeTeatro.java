@@ -41,7 +41,7 @@ public class CompaniaDeTeatro
 
 	public CompaniaDeTeatro(@JsonProperty(value="nombre")String nombre, @JsonProperty(value="representante")String representante, @JsonProperty(value="idRepresentante")int idRepresentante, @JsonProperty(value="paisOrigen")String paisOrigen,
 			@JsonProperty(value="paginaWeb")String paginaWeb, @JsonProperty(value="fechaLlegada")Date fechaLlegada, @JsonProperty(value="fechaPartida")Date fechaPartida, @JsonProperty(value="email")String email, @JsonProperty(value="password")String password,
-			@JsonProperty(value="codigoEspectaculo")int codigoEspectaculo, @JsonProperty(value="codigo")int pCodigo)
+			@JsonProperty(value="codigoEspectaculo")int codigoEspectaculo)
 	{
 		super();
 		this.nombre = nombre;
@@ -54,7 +54,7 @@ public class CompaniaDeTeatro
 		this.email = email;
 		this.password = password;
 		this.codigoEspectaculo = codigoEspectaculo;
-		this.codigo = pCodigo;
+		//this.codigo = pCodigo;
 	}
 
 	public String getNombre()

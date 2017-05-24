@@ -386,5 +386,23 @@ public class FestivAndesServices
 		}
 		return Response.status(200).entity(id).build();
 	}
+	
+	@DELETE
+	@Path("/companias/{nombre}")
+	@Consumes(MediaType.APPLICATION_JSON)
+	@Produces(MediaType.APPLICATION_JSON)
+	public Response retirarCompania(@javax.ws.rs.PathParam("nombre") String nombre)
+	{
+		FestivAndesTransactionManager tm = new FestivAndesTransactionManager(getPath());
+		try 
+		{
+			tm.deleteCompaniaRemoto(nombre);
+		} 
+		catch (Exception e) 
+		{
+			return Response.status(500).entity(doErrorMessage(e)).build();
+		}
+		return Response.status(200).entity(nombre).build();
+	}
 
 }
