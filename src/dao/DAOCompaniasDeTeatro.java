@@ -91,6 +91,13 @@ public class DAOCompaniasDeTeatro
 
 			companias.add(new CompaniaDeTeatro(nombre, representante, idRepresentante, paisOrigen, paginaWeb, fechaLlegada, fechaPartida, email, password, codigoEspectaculo));
 		}
+		
+		String sql2 = "DELETE FROM ISIS2304A031720.COMPAÑIAS_DE_TEATRO WHERE NOMBRE ="+nombreCompania;
+
+		System.out.println("SQL stmt:" + sql);
+
+		PreparedStatement prepStmt2 = conn.prepareStatement(sql2);
+		recursos.add(prepStmt2);
 		return companias;
 	}
 
